@@ -1,0 +1,149 @@
+<html>
+<head>
+ <title>Finales Trunkeln</title>
+<meta charset="utf-8"/>
+</head>
+<body>
+<div id="main">
+</div>
+    <br/>
+    <div>
+        <button id='pause' onclick='pause()'>Pause</button>
+        <input type='number' min='5' id='interval' onchange='changeTimer(this.value)'></input>
+        <span id='timer'></span>
+    </div>
+</body>
+<script>
+var extra   = ["0BONUS_DO_NOT_INCLUDE_IN_POOL_AlexDaddy", "0BONUS_DO_NOT_INCLUDE_IN_POOL_HabbyBirthday"]
+var samples = ["Alle3Schluck","AlleExen","AlleJungs","AlleMaedels","JaNeinVerbot","KeineVornamen","Regel","SitznachbarnBeruehren","Submaster","VerbindungErstellen","Wasserfall"]
+
+
+var percentage = []
+
+
+var currentCounter = 0;
+var interval = 60;
+var paused = false;
+
+var initialOffset = 30;
+
+var firstTime = 0;
+
+function pause() {
+    paused = !paused;
+    if(!paused)
+        document.getElementById("pause").innerHTML = "Pause"
+    else
+        document.getElementById("pause").innerHTML = "Continue"
+}
+
+function select(name) {
+    var a = new Audio("lux/QueuePop2.wav");
+    a.addEventListener("ended", function(){
+        a.currentTime = 0;
+        var b = new Audio("lux/"+name+".wav");
+        b.play();
+    });
+    a.play();
+}
+
+function updateSlider(index, value) {
+    value = Math.min(100, Math.max(0, value))
+    var dif = percentage[index]-value;
+    var whole = 100-percentage[index]
+    percentage[index] = percentage[index]-dif;
+    for(var i=0;i<samples.length;i++) {
+        var nV = percentage[i] + percentage[i]*dif/whole;
+        if(Number.isNaN(nV)) nV = 0;
+        if(i != index) {
+            percentage[i] = Math.min(100, Math.max(0, nV))
+        }
+        document.getElementById("range_"+i).value = percentage[i]
+        document.getElementById("number_"+i).value = Math.round(percentage[i])
+    }
+}
+
+function chooseOne() {
+    var r = Math.floor(Math.random() * (100 - 0 + 1) + 0);
+    var cur = 0;
+    for(var i=0;i<samples.length-1;i++) {
+        if(cur+percentage[i] >= r && r < cur+percentage[i]+percentage[i+1] && !percentage[i].toString().startsWith("0") ) return i;
+        cur = cur + percentage[i];
+    }
+    return samples.length-1;
+}
+
+function changeTimer(value) {
+    interval = Math.max(10,value)
+    document.getElementById("interval").value = interval
+}
+
+for(var i=0;i<samples.length;i++) {
+      var paragraph = document.createElement("div");
+      paragraph.innerHTML = ""
+            +"<button onclick='select(\""+samples[i]+"\")'>Play</button>"
+            +"<input type='range' min='0' max='100' class='slider' id='range_"+i+"' onchange='updateSlider("+i+", this.value)'></input>"
+            +"<input type='number' min='0' max='100' id='number_"+i+"' onchange='updateSlider("+i+", this.value)'></input>"
+            + samples[i]
+      document.getElementById("main").appendChild(paragraph);
+}
+
+
+var defaultValues = [12, 5, 11, 11, 11, 11, 12, 5, 8, 7, 7]
+
+for(var i=0;i<samples.length;i++) {
+    percentage[i] = defaultValues[i] // 100 / samples.length
+    document.getElementById("range_"+i).value = percentage[i]
+    document.getElementById("number_"+i).value = Math.round(percentage[i])
+}
+
+document.getElementById("interval").value = interval
+
+ 
+ // first delay only 30 seconds
+ currentCounter = 0;
+ 
+setInterval(function(){
+    if(paused) return;
+    
+    if(firstTime == 0) {
+        var r = Math.floor(Math.random() * (100 - 0 + 1) + 0);
+        if(r > 90)
+            var a = new Audio("lux/0BONUS_DO_NOT_INCLUDE_IN_POOL_AlexDaddy.wav");
+        else
+            var a = new Audio("lux/0BONUS_DO_NOT_INCLUDE_IN_POOL_HabbyBirthday.wav");
+
+        a.play();
+        firstTime = 1;
+    }
+
+    currentCounter = currentCounter + 1;
+        
+    if(firstTime == 1) {
+        if(currentCounter >= 30) {
+            select(samples[chooseOne()]);
+            currentCounter = 0
+            firstTime = 2;
+            document.getElementById("timer").innerHTML = "0 Sekunden"
+        }else
+            document.getElementById("timer").innerHTML = (30-currentCounter)+" Sekunden"
+    }else {
+        if(currentCounter > interval) {
+            select(samples[chooseOne()]);
+            currentCounter = 0
+        }
+        document.getElementById("timer").innerHTML = (interval-currentCounter)+" Sekunden"
+    }
+ }, 1000);
+
+setInterval(function(){
+ var a = new Audio("BluetoothStall.wav");
+ a.play();
+}, 1000 * 45 );
+
+ 
+pause();
+
+ 
+</script>
+</html>
