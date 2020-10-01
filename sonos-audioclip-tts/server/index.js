@@ -206,9 +206,9 @@ app.get('/api/clipCapableSpeakers', async (req, res) => {
   res.send(JSON.stringify({'success':true, 'players': clipCapablePlayers}));
 });
 
-// This is where we finally speak the text. The URL variables include the playerId and the text to speak
-app.get('/api/speakText', async (req, res) => {
-  const text = req.query.text;
+// play the given url sound file on sonos
+app.get('/api/playURL', async (req, res) => {
+  const file = req.query.file;
   const playerId = req.query.playerId;
 
   const speakTextRes = res;
@@ -217,20 +217,12 @@ app.get('/api/speakText', async (req, res) => {
     res.send(JSON.stringify({'success':false,authRequired:true}));
   }
 
-  if (text == null || playerId == null) { // Return if either is null
+  if (file == null || playerId == null) { // Return if either is null
     speakTextRes.send(JSON.stringify({'success':false,error: 'Missing Parameters'}));
     return;
   }
 
-  let speechUrl;
-
-  try { // Let's make a call to the google tts api and get the url for our TTS file
-    speechUrl = await googleTTS(text, 'en-US', 1);
-  }
-  catch (err) {
-    speakTextRes.send(JSON.stringify({'success':false,error: err.stack}));
-    return;
-  }
+  let speechUrl = file;
 
   console.log({ speechUrl})
   const body = { streamUrl: speechUrl, name: 'Sonos TTS', appId: 'com.me.sonosspeech' };
@@ -265,6 +257,64 @@ app.get('/api/speakText', async (req, res) => {
   }
 });
 
+// This is where we finally speak the text. The URL variables include the playerId and the text to speak
+app.get('/api/speakText', async (req, res) => {
+  const text = req.query.text;
+  const playerId = req.query.playerId;
+
+  const speakTextRes = res;
+  speakTextRes.setHeader('Content-Type', 'application/json');
+  if (authRequired) {
+    res.send(JSON.stringify({ 'success': false, authRequired: true }));
+  }
+
+  if (text == null || playerId == null) { // Return if either is null
+    speakTextRes.send(JSON.stringify({ 'success': false, error: 'Missing Parameters' }));
+    return;
+  }
+
+  let speechUrl;
+
+  try { // Let's make a call to the google tts api and get the url for our TTS file
+    speechUrl = await googleTTS(text, 'en-US', 1);
+  }
+  catch (err) {
+    speakTextRes.send(JSON.stringify({ 'success': false, error: err.stack }));
+    return;
+  }
+
+  console.log({ speechUrl })
+  const body = { streamUrl: speechUrl, name: 'Sonos TTS', appId: 'com.me.sonosspeech' };
+
+  let audioClipRes;
+
+  try { // And call the audioclip API, with the playerId in the url path, and the text in the JSON body
+    audioClipRes = await fetch(`https://api.ws.sonos.com/control/api/v1/players/${playerId}/audioClip`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token.token.access_token}` },
+    });
+  }
+  catch (err) {
+    speakTextRes.send(JSON.stringify({ 'success': false, error: err.stack }));
+    return;
+  }
+
+  const audioClipResText = await audioClipRes.text(); // Same thing as above: convert to text, since occasionally the Sonos API returns text
+
+  try {
+    const json = JSON.parse(audioClipResText);
+    if (json.id !== undefined) {
+      speakTextRes.send(JSON.stringify({ 'success': true }));
+    }
+    else {
+      speakTextRes.send(JSON.stringify({ 'success': false, 'error': json.errorCode }));
+    }
+  }
+  catch (err) {
+    speakTextRes.send(JSON.stringify({ 'success': false, 'error': audioClipResText }));
+  }
+});
 app.listen(3001, () =>
   console.log('Express server is running on localhost:3001')
 );
